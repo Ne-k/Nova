@@ -1,0 +1,26 @@
+.container {
+    display: flex;
+    height: 100vh;
+}
+
+.main {
+    flex: 3;
+    background-color: #f0f0f0;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.sidebar {
+    flex: 1;
+    background-color: #d0d0d0;
+    padding: 1em;
+    overflow-y: auto;
+}
+
+.card {
+    margin: 1em;
+    padding: 1em;
+    border: 1px solid #888;
+    border-radius: 8px;
+}
