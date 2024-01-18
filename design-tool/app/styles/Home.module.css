@@ -6,9 +6,37 @@
 .main {
     flex: 3;
     background-color: #f0f0f0;
+    position: relative; /* Add this to position the canvas */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.toolbar {
     display: flex;
     justify-content: center;
-    align-items: center;
+    padding: 10px;
+    background-color: #f0f0f0;
+    border-radius: 25px;
+    margin-bottom: 10px;
+    width: 100%;
+
+}
+.tool.selected {
+    box-shadow: 0 0 10px #000;
+}
+
+.tool {
+    border: none;
+    background: #000000; /* Change the background color to black */
+    color: #ffffff; /* Change the text color to white for contrast */
+    margin: 0 10px;
+    display: none;
+}
+
+.tool img {
+    width: 30px;
+    height: 30px;
 }
 
 .sidebar {
