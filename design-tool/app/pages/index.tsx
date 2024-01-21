@@ -19,6 +19,7 @@ type Line = {
     tool: string;
     points: number[];
     id: string;
+    size: number;
 };
 
 const Home: NextPage = () => {
@@ -28,6 +29,7 @@ const Home: NextPage = () => {
     const stageRef = useRef(null);
     const [tool, setTool] = useState('pencil')
     const [eraserSize, setEraserSize] = useState(5);
+    const [pencilSize, setPencilSize] = useState(5)
 
     const addPlant = (plant: Plant) => {
         setPlants([...plants, plant]);
@@ -39,7 +41,7 @@ const Home: NextPage = () => {
         if (stage) {
             const pos = stage.getPointerPosition();
             if (pos) {
-                setLines([...lines, { tool: tool, points: [pos.x, pos.y, pos.x, pos.y], id: uuidv4() }]);
+                setLines([...lines, { tool: tool, points: [pos.x, pos.y, pos.x, pos.y], id: uuidv4(), size: tool === 'pencil' ? pencilSize : eraserSize }]); // Update this line
             }
         }
     };
@@ -75,9 +77,7 @@ const Home: NextPage = () => {
     };
 
 
-    const drawRectangle = () => {
-        setLines([...lines, { tool: 'rectangle', points: [20, 20, 100, 100], id: uuidv4() }]);
-    };
+
 
     const width = typeof window !== 'undefined' ? window.innerWidth : 0;
     const height = typeof window !== 'undefined' ? window.innerHeight : 0;
@@ -92,9 +92,17 @@ const Home: NextPage = () => {
 
             <main className={styles.main}>
                 <div className="toolbar" style={{border: '2px solid #000', borderRadius: '15px', padding: '10px'}}>
+                    <button className="tool" onClick={() => setTool('cursor')}>
+                        <img src="/icons8-cursor-26.png" alt="Cursor" width="40" height="40"/>
+                    </button>
                     <button className="tool" onClick={() => setTool('pencil')}>
                         <img src="/pencil-svgrepo-com.svg" alt="Draw" width="40" height="40"/>
                     </button>
+                    {tool === 'pencil' && (
+                        <input type="range" min="1" max="50" value={pencilSize}
+                               onChange={(e) => setPencilSize(Number(e.target.value))}
+                        />
+                    )}
                     <button className="tool" onClick={() => setTool('eraser')}>
                         <img src="/eraser.svg" alt="Erase" width="40" height="40"/>
                     </button>
@@ -105,8 +113,8 @@ const Home: NextPage = () => {
                     )}
                 </div>
 
-                <Stage width={width - 400} height={height} ref={stageRef} onMouseDown={handleMouseDown}
-                       onMousemove={handleMouseMove} onMouseUp={handleMouseUp}>
+                <Stage width={width - 400} height={height} ref={stageRef} onMouseDown={tool !== 'cursor' ? handleMouseDown : undefined}
+                       onMousemove={tool !== 'cursor' ? handleMouseMove : undefined} onMouseUp={tool !== 'cursor' ? handleMouseUp : undefined}>
                     <Layer>
                         {lines.map((line, i) => {
                             if (line.tool === 'rectangle') {
@@ -124,7 +132,7 @@ const Home: NextPage = () => {
                                     key: i,
                                     points: line.points,
                                     stroke: line.tool === 'pencil' ? '#df4b26' : '#fff',
-                                    strokeWidth: line.tool === 'pencil' ? 5 : eraserSize,
+                                    strokeWidth: line.size, // Update this line
                                     tension: 0.5,
                                     lineCap: 'round',
                                     globalCompositeOperation: line.tool === 'pencil' ? 'source-over' : 'destination-out'
