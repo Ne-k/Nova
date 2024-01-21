@@ -3,8 +3,8 @@ import { useState, useEffect, useRef } from 'react';
 import type { NextPage } from 'next';
 import Head from 'next/head';
 import Image from 'next/image';
-import styles from '../styles/Home.module.css';
-import { Stage, Layer, Line, Rect } from 'react-konva';
+import styles from '../app/styles/Home.module.css';
+import {Stage, Layer, Line, Rect, Circle, Text} from 'react-konva';
 import Konva from 'konva';
 import { v4 as uuidv4 } from 'uuid';
 import LineConfig = Konva.LineConfig;
@@ -13,6 +13,7 @@ type Plant = {
     name: string;
     image: string;
     description: string;
+    color: string;
 };
 
 type Line = {
@@ -30,6 +31,9 @@ const Home: NextPage = () => {
     const [tool, setTool] = useState('pencil')
     const [eraserSize, setEraserSize] = useState(5);
     const [pencilSize, setPencilSize] = useState(5)
+    const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
+    const [selectedPlant, setSelectedPlant] = useState<Plant | null>(null);
+
 
     const addPlant = (plant: Plant) => {
         setPlants([...plants, plant]);
@@ -69,6 +73,12 @@ const Home: NextPage = () => {
                 }
             }
         }
+        if (stage) {
+            const point = stage.getPointerPosition();
+            if (point) {
+                setCursorPos(point);
+            }
+        }
     };
 
 
@@ -76,6 +86,25 @@ const Home: NextPage = () => {
         setIsDrawing(false); // Add this line
     };
 
+    useEffect(() => {
+        const handleKeyDown = (event: KeyboardEvent) => {
+            if ((event.ctrlKey || event.metaKey) && event.key === 'z') {
+                setLines(lines.slice(0, -1));
+            }
+        };
+
+        window.addEventListener('keydown', handleKeyDown);
+
+        // Clean up the event listener when the component unmounts
+        return () => {
+            window.removeEventListener('keydown', handleKeyDown);
+        };
+    }, [lines]);
+
+    useEffect(() => {
+        const plants = JSON.parse(localStorage.getItem('plants') || '[]');
+        setPlants(plants);
+    }, []);
 
 
 
@@ -86,8 +115,8 @@ const Home: NextPage = () => {
         <div className={styles.container}>
             <Head>
                 <title>Permaculture Design Tool</title>
-                <meta name="description" content="Permaculture design tool with configurable plants" />
-                <link rel="icon" href="/favicon.ico" />
+                <meta name="description" content="Permaculture design tool with configurable plants"/>
+                <link rel="icon" href="/favicon.ico"/>
             </Head>
 
             <main className={styles.main}>
@@ -113,8 +142,10 @@ const Home: NextPage = () => {
                     )}
                 </div>
 
-                <Stage width={width - 400} height={height} ref={stageRef} onMouseDown={tool !== 'cursor' ? handleMouseDown : undefined}
-                       onMousemove={tool !== 'cursor' ? handleMouseMove : undefined} onMouseUp={tool !== 'cursor' ? handleMouseUp : undefined}>
+                <Stage width={width - 400} height={height} ref={stageRef}
+                       onMouseDown={tool !== 'cursor' ? handleMouseDown : undefined}
+                       onMousemove={tool !== 'cursor' ? handleMouseMove : undefined}
+                       onMouseUp={tool !== 'cursor' ? handleMouseUp : undefined}>
                     <Layer>
                         {lines.map((line, i) => {
                             if (line.tool === 'rectangle') {
@@ -140,20 +171,43 @@ const Home: NextPage = () => {
                                 return <Line {...lineConfig} />;
                             }
                         })}
+                        {(tool === 'pencil' || tool === 'eraser') && (
+                            <Circle
+                                x={cursorPos.x}
+                                y={cursorPos.y}
+                                radius={tool === 'pencil' ? pencilSize : eraserSize}
+                                stroke={tool === 'pencil' ? '#df4b26' : '#fff'}
+                                strokeWidth={1}
+                            />
+                        )}
                     </Layer>
                 </Stage>
             </main>
 
             <aside className={styles.sidebar}>
                 <h1>Configured Plants</h1>
-                {plants.map((plant, index) => (
-                    <div key={index} className={styles.card}>
-                        <h2>{plant.name}</h2>
-                        <Image src={plant.image} alt={plant.name} width={300} height={300}/>
-                        <p>{plant.description}</p>
-                    </div>
-                ))}
+                <Stage width={200} height={plants.length * 100}>
+                    {plants.map((plant, index) => (
+                        <Layer key={index}>
+                            <Circle
+                                x={100}
+                                y={index * 100 + 50}
+                                radius={40}
+                                fill={plant.color}
+                            />
+                            <Text
+                                x={50}
+                                y={index * 100 + 50 - 10} // Subtract half the height of the text
+                                text={plant.name}
+                                width={100}
+                                align='center'
+                            />
+
+                        </Layer>
+                    ))}
+                </Stage>
             </aside>
+
         </div>
     );
 };

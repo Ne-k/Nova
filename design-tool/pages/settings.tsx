@@ -17,12 +17,16 @@ const Settings: NextPage = () => {
             setColor(randomColor);
         }
 
-        // Add the plant to your plants data (not shown in this example)
-        // ...
+        // Add the plant to localStorage
+        const newPlant = { name, width, color };
+        const plants = JSON.parse(localStorage.getItem('plants') || '[]');
+        plants.push(newPlant);
+        localStorage.setItem('plants', JSON.stringify(plants));
 
         // Redirect to the home page after adding the plant
         router.push('/');
     };
+
 
     return (
         <form onSubmit={handleSubmit}>
