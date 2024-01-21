@@ -8,6 +8,7 @@ import {Stage, Layer, Line, Rect, Circle, Text} from 'react-konva';
 import Konva from 'konva';
 import { v4 as uuidv4 } from 'uuid';
 import LineConfig = Konva.LineConfig;
+import {useRouter} from "next/navigation";
 
 type Plant = {
     name: string;
@@ -34,6 +35,7 @@ const Home: NextPage = () => {
     const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
     const [selectedPlant, setSelectedPlant] = useState<Plant | null>(null);
 
+    const router = useRouter();
 
     const addPlant = (plant: Plant) => {
         setPlants([...plants, plant]);
@@ -142,7 +144,13 @@ const Home: NextPage = () => {
                     )}
                 </div>
 
-                <Stage width={width - 400} height={height} ref={stageRef}
+                <Stage onDrop={(event: React.MouseEvent<HTMLButtonElement>) => {
+                    const index = event.dataTransfer.getData('application/reactflow');
+                    const pos = stageRef.current.getPointerPosition();
+                    setPlants(plants => plants.map((plant, i) => i === index ? { ...plant, x: pos.x, y: pos.y } : plant));
+                }}
+                       onDragOver={(event) => event.preventDefault()}
+                    width={width - 400} height={height} ref={stageRef}
                        onMouseDown={tool !== 'cursor' ? handleMouseDown : undefined}
                        onMousemove={tool !== 'cursor' ? handleMouseMove : undefined}
                        onMouseUp={tool !== 'cursor' ? handleMouseUp : undefined}>
@@ -185,10 +193,12 @@ const Home: NextPage = () => {
             </main>
 
             <aside className={styles.sidebar}>
-                <h1>Configured Plants</h1>
+                <button className="configure-button" onClick={() => router.push('/settings')}>
+                    Configure Plants
+                </button>
                 <Stage width={200} height={plants.length * 100}>
                     {plants.map((plant, index) => (
-                        <Layer key={index}>
+                        <Layer key={index} draggable>
                             <Circle
                                 x={100}
                                 y={index * 100 + 50}
@@ -202,9 +212,9 @@ const Home: NextPage = () => {
                                 width={100}
                                 align='center'
                             />
-
                         </Layer>
                     ))}
+
                 </Stage>
             </aside>
 
