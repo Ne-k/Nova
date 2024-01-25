@@ -1,21 +1,32 @@
 'use client'
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import type { NextPage } from 'next';
 import Head from 'next/head';
-import Image from 'next/image';
 import styles from '../app/styles/Home.module.css';
 import {Stage, Layer, Line, Rect, Circle, Text} from 'react-konva';
 import Konva from 'konva';
 import { v4 as uuidv4 } from 'uuid';
 import LineConfig = Konva.LineConfig;
 import {useRouter} from "next/navigation";
+import { Group } from 'react-konva';
+
+
+
+interface KonvaDragEvent extends React.DragEvent {
+    evt: DragEvent & {
+        dataTransfer: DataTransfer;
+    };
+}
 
 type Plant = {
     name: string;
     image: string;
     description: string;
     color: string;
+    x?: number;
+    y?: number;
 };
+
 
 type Line = {
     tool: string;
@@ -28,12 +39,20 @@ const Home: NextPage = () => {
     const [plants, setPlants] = useState<Plant[]>([]);
     const [isDrawing, setIsDrawing] = useState(true);
     const [lines, setLines] = useState<Line[]>([]);
-    const stageRef = useRef(null);
+    const stageRef = useRef<Konva.Stage>(null);
     const [tool, setTool] = useState('pencil')
     const [eraserSize, setEraserSize] = useState(5);
     const [pencilSize, setPencilSize] = useState(5)
     const [cursorPos, setCursorPos] = useState({ x: 0, y: 0 });
     const [selectedPlant, setSelectedPlant] = useState<Plant | null>(null);
+    const DragContext = React.createContext(null);
+    const [draggedPlant, setDraggedPlant] = useState<Plant | null>(null);
+    const [sidebarPlants, setSidebarPlants] = useState<Plant[]>([]);
+    const [canvasPlants, setCanvasPlants] = useState<Plant[]>([]);
+
+
+
+
 
     const router = useRouter();
 
@@ -85,7 +104,7 @@ const Home: NextPage = () => {
 
 
     const handleMouseUp = () => {
-        setIsDrawing(false); // Add this line
+        setIsDrawing(false);
     };
 
     useEffect(() => {
@@ -97,7 +116,6 @@ const Home: NextPage = () => {
 
         window.addEventListener('keydown', handleKeyDown);
 
-        // Clean up the event listener when the component unmounts
         return () => {
             window.removeEventListener('keydown', handleKeyDown);
         };
@@ -114,6 +132,7 @@ const Home: NextPage = () => {
     const height = typeof window !== 'undefined' ? window.innerHeight : 0;
 
     return (
+
         <div className={styles.container}>
             <Head>
                 <title>Permaculture Design Tool</title>
@@ -144,17 +163,49 @@ const Home: NextPage = () => {
                     )}
                 </div>
 
-                <Stage onDrop={(event: React.MouseEvent<HTMLButtonElement>) => {
+                <Stage onDrop={(event: React.DragEvent) => {
                     const index = event.dataTransfer.getData('application/reactflow');
-                    const pos = stageRef.current.getPointerPosition();
-                    setPlants(plants => plants.map((plant, i) => i === index ? { ...plant, x: pos.x, y: pos.y } : plant));
+                    const stageRef = useRef<Konva.Stage>(null);
+
+                    if (draggedPlant) {
+                        const stage = event.currentTarget as unknown as Konva.Stage;
+                        const pos = stage.getPointerPosition();
+
+                        if(pos) {
+                            setCanvasPlants(prevCanvasPlants => [...prevCanvasPlants, { ...draggedPlant, x: pos.x, y: pos.y }]);
+                        }
+
+                        setSidebarPlants(prevSidebarPlants => prevSidebarPlants.filter(plant => plant !== draggedPlant));
+                        setDraggedPlant(null);
+                    }
+
+                    if (stageRef.current) {
+                        const pos = stageRef.current.getPointerPosition();
+                        if(pos) {
+                            setPlants(plants => plants.map((plant, i) => i === Number(index) ? { ...plant, x: pos.x, y: pos.y } : plant));
+                        }
+                    }
                 }}
-                       onDragOver={(event) => event.preventDefault()}
+
+                       onDragOver={(event: React.DragEvent) => event.preventDefault()}
                     width={width - 400} height={height} ref={stageRef}
                        onMouseDown={tool !== 'cursor' ? handleMouseDown : undefined}
                        onMousemove={tool !== 'cursor' ? handleMouseMove : undefined}
                        onMouseUp={tool !== 'cursor' ? handleMouseUp : undefined}>
                     <Layer>
+                        {canvasPlants.map((plant, index) => (
+                            <Group key={index} x={plant.x} y={plant.y}>
+                                <Circle
+                                    radius={40}
+                                    fill={plant.color}
+                                />
+                                <Text
+                                    text={plant.name}
+                                    width={100}
+                                    align='center'
+                                />
+                            </Group>
+                        ))}
                         {lines.map((line, i) => {
                             if (line.tool === 'rectangle') {
                                 const rectConfig = {
@@ -171,7 +222,7 @@ const Home: NextPage = () => {
                                     key: i,
                                     points: line.points,
                                     stroke: line.tool === 'pencil' ? '#df4b26' : '#fff',
-                                    strokeWidth: line.size, // Update this line
+                                    strokeWidth: line.size,
                                     tension: 0.5,
                                     lineCap: 'round',
                                     globalCompositeOperation: line.tool === 'pencil' ? 'source-over' : 'destination-out'
@@ -198,7 +249,10 @@ const Home: NextPage = () => {
                 </button>
                 <Stage width={200} height={plants.length * 100}>
                     {plants.map((plant, index) => (
-                        <Layer key={index} draggable>
+                        <Layer   key={index}
+                                 draggable
+                                 onMouseDown={() => setDraggedPlant(plant)}
+                        >
                             <Circle
                                 x={100}
                                 y={index * 100 + 50}
